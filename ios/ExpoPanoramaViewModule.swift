@@ -5,7 +5,7 @@ public class ExpoPanoramaViewModule: Module {
     Name("ExpoPanoramaView")
 
     View(ExpoPanoramaView.self) {
-      Events("onTap", "onLoad", "onError", "onCameraChange")
+      Events("onTap", "onLoadStart", "onLoadEnd", "onLoadError", "onCameraChange")
 
       AsyncFunction("resetMotion") { (view: ExpoPanoramaView) in
         view.resetMotion()

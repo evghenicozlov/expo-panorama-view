@@ -23,8 +23,11 @@ export type ExpoPanoramaViewProps = {
   /** iOS/Android: follows device orientation using fused motion sensors. Defaults to false. */
   enableMotion?: boolean;
   onTap?: (event: ViewEvent<OnTapEventPayload>) => void;
-  onLoad?: (event: ViewEvent<{ width: number; height: number }>) => void;
-  onError?: (event: ViewEvent<{ message: string }>) => void;
+  /** Fired before a non-empty source starts loading, including local files. */
+  onLoadStart?: (event: ViewEvent<{ uri: string }>) => void;
+  /** Fired when the image loads successfully. Errors emit onLoadError instead. */
+  onLoadEnd?: (event: ViewEvent<{ width: number; height: number }>) => void;
+  onLoadError?: (event: ViewEvent<{ message: string }>) => void;
   onCameraChange?: (event: ViewEvent<PanoramaCamera>) => void;
   style?: StyleProp<ViewStyle>;
 };

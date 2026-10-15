@@ -7,8 +7,9 @@ import simd
 /// Equirectangular (2:1) images viewed from the center of a sphere.
 class ExpoPanoramaView: ExpoView {
   let onTap = EventDispatcher()
-  let onLoad = EventDispatcher()
-  let onError = EventDispatcher()
+  let onLoadStart = EventDispatcher()
+  let onLoadEnd = EventDispatcher()
+  let onLoadError = EventDispatcher()
   let onCameraChange = EventDispatcher()
 
   private let sceneView = SCNView()
@@ -103,10 +104,11 @@ class ExpoPanoramaView: ExpoView {
     loadID = UUID()
     material.diffuse.contents = nil
     guard let uri, !uri.isEmpty else { return }
+    onLoadStart(["uri": uri])
     guard let url = URL(string: uri),
           let scheme = url.scheme?.lowercased(),
           ["http", "https", "file"].contains(scheme) else {
-      onError(["message": "Expected an http, https or file URI."])
+      onLoadError(["message": "Expected an http, https or file URI."])
       return
     }
     let requestID = loadID
@@ -135,11 +137,11 @@ class ExpoPanoramaView: ExpoView {
     guard id == loadID else { return }
     imageTask = nil
     guard let image else {
-      onError(["message": message])
+      onLoadError(["message": message])
       return
     }
     material.diffuse.contents = image
-    onLoad(["width": image.size.width * image.scale, "height": image.size.height * image.scale])
+    onLoadEnd(["width": image.size.width * image.scale, "height": image.size.height * image.scale])
   }
 
   func setYaw(_ value: Double) {
@@ -195,7 +197,7 @@ class ExpoPanoramaView: ExpoView {
     guard !motionManager.isDeviceMotionActive else { return }
     guard motionManager.isDeviceMotionAvailable,
           CMMotionManager.availableAttitudeReferenceFrames().contains(.xArbitraryZVertical) else {
-      onError(["message": "Device motion is unavailable on this device."])
+      onLoadError(["message": "Device motion is unavailable on this device."])
       return
     }
     motionReference = nil
@@ -208,7 +210,7 @@ class ExpoPanoramaView: ExpoView {
         if let error {
           self.motionManager.stopDeviceMotionUpdates()
           self.motionSession = UUID()
-          self.onError(["message": error.localizedDescription])
+          self.onLoadError(["message": error.localizedDescription])
           return
         }
         guard let motion else { return }

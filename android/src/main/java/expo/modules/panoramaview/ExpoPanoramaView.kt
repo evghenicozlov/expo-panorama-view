@@ -19,8 +19,9 @@ import kotlin.math.*
 
 class ExpoPanoramaView(context: Context, appContext: AppContext) : ExpoView(context, appContext), SensorEventListener, LifecycleEventListener {
   private val onTap by EventDispatcher<Map<String, Any>>()
-  private val onLoad by EventDispatcher<Map<String, Any>>()
-  private val onError by EventDispatcher<Map<String, Any>>()
+  private val onLoadStart by EventDispatcher<Map<String, Any>>()
+  private val onLoadEnd by EventDispatcher<Map<String, Any>>()
+  private val onLoadError by EventDispatcher<Map<String, Any>>()
   private val onCameraChange by EventDispatcher<Map<String, Any>>()
   private val renderer = PanoramaRenderer()
   private val surface = GLSurfaceView(context)
@@ -108,6 +109,7 @@ class ExpoPanoramaView(context: Context, appContext: AppContext) : ExpoView(cont
   }
   private fun loadImage(uri: String) {
     cancelLoad(); val id=generation
+    onLoadStart(mapOf("uri" to uri))
     load=executor.submit {
       var http: HttpURLConnection? = null
       try {
@@ -142,9 +144,9 @@ class ExpoPanoramaView(context: Context, appContext: AppContext) : ExpoView(cont
         if(id!=generation) { bitmap.recycle(); return@submit }
         surface.queueEvent { if(id==generation) renderer.setImage(bitmap) else bitmap.recycle() }
         surface.requestRender()
-        post { if(id==generation) onLoad(mapOf("width" to bounds.outWidth,"height" to bounds.outHeight)) }
+        post { if(id==generation) onLoadEnd(mapOf("width" to bounds.outWidth,"height" to bounds.outHeight)) }
       } catch(error: Exception) {
-        post { if(id==generation) onError(mapOf("message" to (error.message ?: "Unable to load panorama."))) }
+        post { if(id==generation) onLoadError(mapOf("message" to (error.message ?: "Unable to load panorama."))) }
       } finally {
         http?.disconnect(); if(connection===http) connection=null
       }
@@ -163,9 +165,9 @@ class ExpoPanoramaView(context: Context, appContext: AppContext) : ExpoView(cont
   private fun updateSensors() {
     if(!attached || !active || !motion) { stopSensors(); return }
     if(listening) return
-    if(rotationSensor==null) { onError(mapOf("message" to "Device motion is unavailable on this device.")); return }
+    if(rotationSensor==null) { onLoadError(mapOf("message" to "Device motion is unavailable on this device.")); return }
     listening=sensors.registerListener(this,rotationSensor,16667)
-    if(!listening) onError(mapOf("message" to "Unable to start device motion."))
+    if(!listening) onLoadError(mapOf("message" to "Unable to start device motion."))
   }
   override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) = Unit
   override fun onSensorChanged(event: SensorEvent) {

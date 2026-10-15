@@ -5,7 +5,7 @@ class ExpoPanoramaViewModule : Module() {
   override fun definition() = ModuleDefinition {
     Name("ExpoPanoramaView")
     View(ExpoPanoramaView::class) {
-      Events("onTap", "onLoad", "onError", "onCameraChange")
+      Events("onTap", "onLoadStart", "onLoadEnd", "onLoadError", "onCameraChange")
       Prop("source") { view: ExpoPanoramaView, value: Map<String, String>? -> view.setSource(value?.get("uri")) }
       Prop("yaw") { view: ExpoPanoramaView, value: Double? -> view.setYaw(value ?: 0.0) }
       Prop("pitch") { view: ExpoPanoramaView, value: Double? -> view.setPitch(value ?: 0.0) }

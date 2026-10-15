@@ -18,8 +18,8 @@ export function PanoramaScreen() {
       zoom={1}
       enableGestures
       enableMotion
-      onLoad={({ nativeEvent }) => console.log(nativeEvent.width, nativeEvent.height)}
-      onError={({ nativeEvent }) => console.warn(nativeEvent.message)}
+      onLoadEnd={({ nativeEvent }) => console.log(nativeEvent.width, nativeEvent.height)}
+      onLoadError={({ nativeEvent }) => console.warn(nativeEvent.message)}
       style={{ flex: 1 }}
     />
   );
@@ -36,7 +36,7 @@ The iOS renderer uses SceneKit; Android uses OpenGL ES 2.0. Neither needs third-
 
 Set `enableMotion` to follow the phone using CoreMotion (gyroscope and accelerometer). It defaults to `false`. The first sensor sample anchors the current view, so enabling motion does not jump to an absolute heading. Portrait and landscape screen axes are supported. Drag and pinch remain available; `enableGestures={false}` disables them independently.
 
-Motion stops when the view leaves its window or the app becomes inactive, and resumes with a new anchor. Turning motion off freezes the current orientation. `onCameraChange` reports the rendered camera angles (Euler degrees, which can wrap at ±180°). Sensor errors and unavailable hardware are reported through `onError`; gestures still work. Test on a physical iPhone — the simulator does not provide device motion.
+Motion stops when the view leaves its window or the app becomes inactive, and resumes with a new anchor. Turning motion off freezes the current orientation. `onCameraChange` reports the rendered camera angles (Euler degrees, which can wrap at ±180°). Sensor errors and unavailable hardware are reported through `onLoadError`; gestures still work. Test on a physical iPhone — the simulator does not provide device motion.
 
 ## Development
 
@@ -96,9 +96,9 @@ export function Panorama() {
 
 ## Android
 
-Uses OpenGL ES 2.0 without third-party renderer dependencies. The center of the image is the default view. The API, screen-relative gestures, events, and `resetMotion()` match iOS. Motion uses the fused game rotation vector (gyroscope/accelerometer), with rotation vector as a fallback. If unavailable, `onError` reports it and gestures remain usable.
+Uses OpenGL ES 2.0 without third-party renderer dependencies. The center of the image is the default view. The API, screen-relative gestures, events, and `resetMotion()` match iOS. Motion uses the fused game rotation vector (gyroscope/accelerometer), with rotation vector as a fallback. If unavailable, `onLoadError` reports it and gestures remain usable.
 
-HTTP(S) and `file://` sources are supported. Prefer HTTPS; Android may block cleartext HTTP according to the host app’s network configuration. Downloads are limited to 32 MB and images are decoded to at most 4096 pixels on their longest side, then reduced further if required by the GPU. `onLoad` reports original dimensions.
+HTTP(S) and `file://` sources are supported. Prefer HTTPS; Android may block cleartext HTTP according to the host app’s network configuration. Downloads are limited to 32 MB and images are decoded to at most 4096 pixels on their longest side, then reduced further if required by the GPU. `onLoadEnd` reports original dimensions.
 
 ```sh
 cd example
@@ -106,3 +106,17 @@ npx expo run:android
 ```
 
 Test motion on a physical device. The example’s Reset position button works on both native platforms.
+
+## Loading events
+
+`onLoadStart` fires before loading each non-empty source on iOS and Android, including local files. Its payload is `{ nativeEvent: { uri: string } }`. Clearing the source does not trigger it. Use `onLoadEnd` and `onLoadError` to finish a loading indicator:
+
+```tsx
+<ExpoPanoramaView
+  source={{ uri }}
+  onLoadStart={() => setLoading(true)}
+  onLoadEnd={() => setLoading(false)}
+  onLoadError={() => setLoading(false)}
+  style={{ flex: 1 }}
+/>
+```

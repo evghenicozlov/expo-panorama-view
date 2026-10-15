@@ -7,6 +7,10 @@ public class ExpoPanoramaViewModule: Module {
     View(ExpoPanoramaView.self) {
       Events("onTap", "onLoad", "onError", "onCameraChange")
 
+      AsyncFunction("resetMotion") { (view: ExpoPanoramaView) in
+        view.resetMotion()
+      }
+
       Prop("source") { (view: ExpoPanoramaView, source: [String: String]?) in
         view.setSource(source?["uri"])
       }

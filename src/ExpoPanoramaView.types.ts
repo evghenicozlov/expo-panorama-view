@@ -4,6 +4,11 @@ export type OnTapEventPayload = Record<string, never>;
 export type PanoramaCamera = { yaw: number; pitch: number; zoom: number };
 type ViewEvent<T> = { nativeEvent: T };
 
+export type ExpoPanoramaViewRef = {
+  /** iOS: re-anchor device motion and clear drag rotation. Keeps yaw, pitch and zoom. */
+  resetMotion(): Promise<void>;
+};
+
 export type ExpoPanoramaViewProps = {
   /** iOS: equirectangular 360° image, ideally 2:1. Supports HTTP(S) and file URIs. */
   source?: { uri: string };

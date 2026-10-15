@@ -4,7 +4,7 @@ Native 360° photo viewer for Expo and React Native. The panorama renderer is cu
 
 ## Usage (iOS)
 
-Use an equirectangular panorama covering 360° × 180°, ideally with a 2:1 aspect ratio. Ordinary photos will appear stretched.
+Use an equirectangular panorama covering 360° × 180°, ideally with a 2:1 aspect ratio. Ordinary photos will appear stretched. With `yaw={0}` and `pitch={0}` (the defaults), the camera starts at the center of the photo. `resetMotion()` returns to this center unless custom base angles are configured.
 
 ```tsx
 import { ExpoPanoramaView } from 'expo-panorama-view';
@@ -64,3 +64,32 @@ pod install
 cd ..
 npx expo run:ios
 ```
+
+## Reset motion (iOS)
+
+Use a typed ref to reset the fused gyroscope/accelerometer reference:
+
+```tsx
+import { useRef } from 'react';
+import { Button } from 'react-native';
+import { ExpoPanoramaView, type ExpoPanoramaViewRef } from 'expo-panorama-view';
+
+export function Panorama() {
+  const ref = useRef<ExpoPanoramaViewRef>(null);
+  return (
+    <>
+      <ExpoPanoramaView
+        ref={ref}
+        source={{ uri: 'https://pannellum.org/images/alma.jpg' }}
+        enableMotion
+        style={{ flex: 1 }}
+      />
+      <Button title="Reset" onPress={() => {
+        ref.current?.resetMotion().catch(console.warn);
+      }} />
+    </>
+  );
+}
+```
+
+`resetMotion(): Promise<void>` clears device and drag rotation, keeps the configured `yaw`, `pitch`, and current zoom, emits `onCameraChange`, and takes the next fresh motion sample as its reference. It also works with motion disabled. It recenters the viewer rather than physically calibrating the sensors. The promise resolves after the reset is applied; the next sensor sample arrives asynchronously. Rebuild the native app after adding this method.

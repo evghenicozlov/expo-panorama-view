@@ -56,7 +56,11 @@ class ExpoPanoramaView: ExpoView {
     material.diffuse.contentsTransform = SCNMatrix4MakeScale(-1, 1, 1)
     material.diffuse.wrapS = .repeat
     sphere.firstMaterial = material
-    sceneView.scene?.rootNode.addChildNode(SCNNode(geometry: sphere))
+    let panoramaNode = SCNNode(geometry: sphere)
+    // SCNSphere places UV (0.5, 0.5) on +Z; the camera looks along -Z.
+    // Align the photo center with yaw = 0 without changing camera/gesture axes.
+    panoramaNode.eulerAngles.y = .pi
+    sceneView.scene?.rootNode.addChildNode(panoramaNode)
 
     cameraNode.camera = SCNCamera()
     cameraNode.camera?.projectionDirection = .vertical
@@ -159,6 +163,21 @@ class ExpoPanoramaView: ExpoView {
   func setEnableGestures(_ enabled: Bool) {
     panGesture.isEnabled = enabled
     pinchGesture.isEnabled = enabled
+  }
+
+  /// Recenter fused gyroscope/accelerometer motion and clear accumulated drag.
+  /// Keep the configured yaw, pitch and zoom as the starting view.
+  func resetMotion() {
+    stopMotion() // Invalidate queued samples before accepting a fresh reference.
+    let identity = simd_quatf(angle: 0, axis: SIMD3<Float>(0, 1, 0))
+    motionOffset = identity
+    motionAnchor = identity
+    gestureRotation = identity
+    motionInterfaceOrientation = nil
+    panGesture.setTranslation(.zero, in: sceneView)
+    updateCamera()
+    emitCameraChange()
+    updateMotionState()
   }
 
   func setEnableMotion(_ enabled: Bool) {

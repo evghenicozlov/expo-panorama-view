@@ -1,10 +1,16 @@
 import { requireNativeView } from 'expo';
 import * as React from 'react';
 
-import { ExpoPanoramaViewProps } from './ExpoPanoramaView.types';
+import type { ExpoPanoramaViewProps, ExpoPanoramaViewRef } from './ExpoPanoramaView.types';
 
-const NativeView: React.ComponentType<ExpoPanoramaViewProps> = requireNativeView('ExpoPanoramaView');
+const NativeView = requireNativeView<
+  ExpoPanoramaViewProps & React.RefAttributes<ExpoPanoramaViewRef>
+>('ExpoPanoramaView');
 
-export default function ExpoPanoramaView(props: ExpoPanoramaViewProps) {
-  return <NativeView {...props} />;
-}
+const ExpoPanoramaView = React.forwardRef<ExpoPanoramaViewRef, ExpoPanoramaViewProps>(
+  function ExpoPanoramaView(props, ref) {
+    return <NativeView {...props} ref={ref} />;
+  }
+);
+
+export default ExpoPanoramaView;

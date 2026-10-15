@@ -13,7 +13,7 @@ export default function ExpoPanoramaView(props: ExpoPanoramaViewProps) {
         alignItems: 'center',
         justifyContent: 'center',
       }}
-      onClick={() => props.onTap({ nativeEvent: {} })}>
+      onClick={() => props.onTap?.({ nativeEvent: {} })}>
       <span>ExpoPanoramaView - native view</span>
       <span>Tap the view to emit a view event</span>
     </div>

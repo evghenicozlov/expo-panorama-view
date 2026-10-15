@@ -1,0 +1,9 @@
+{
+  "platforms": ["apple", "android", "web"],
+  "apple": {
+    "modules": ["ExpoPanoramaViewModule"]
+  },
+  "android": {
+    "modules": ["expo.modules.panoramaview.ExpoPanoramaViewModule"]
+  }
+}

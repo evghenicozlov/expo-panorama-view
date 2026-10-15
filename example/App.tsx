@@ -15,7 +15,7 @@ export default function App() {
         enableMotion
         onTap={() => console.log('Tapped!')}
       />
-      {Platform.OS === 'ios' && (
+      {Platform.OS !== 'web' && (
         <View style={{ padding: 16, paddingBottom: 32 }}>
           <Button
             title="Reset position"

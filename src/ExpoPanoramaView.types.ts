@@ -5,22 +5,22 @@ export type PanoramaCamera = { yaw: number; pitch: number; zoom: number };
 type ViewEvent<T> = { nativeEvent: T };
 
 export type ExpoPanoramaViewRef = {
-  /** iOS: re-anchor device motion and clear drag rotation. Keeps yaw, pitch and zoom. */
+  /** iOS/Android: re-anchor device motion and clear drag rotation. Keeps yaw, pitch and zoom. */
   resetMotion(): Promise<void>;
 };
 
 export type ExpoPanoramaViewProps = {
-  /** iOS: equirectangular 360° image, ideally 2:1. Supports HTTP(S) and file URIs. */
+  /** iOS/Android: equirectangular 360° image, ideally 2:1. Supports HTTP(S) and file URIs. */
   source?: { uri: string };
-  /** iOS: horizontal rotation in degrees. Defaults to 0. */
+  /** iOS/Android: horizontal rotation in degrees. Defaults to 0. */
   yaw?: number;
-  /** iOS: vertical rotation in degrees, clamped to -89…89. Defaults to 0. */
+  /** iOS/Android: vertical rotation in degrees, clamped to -89…89. Defaults to 0. */
   pitch?: number;
-  /** iOS: magnification, clamped to 1…4. Defaults to 1. */
+  /** iOS/Android: magnification, clamped to 1…4. Defaults to 1. */
   zoom?: number;
-  /** iOS: enables pan and pinch gestures. Defaults to true. */
+  /** iOS/Android: enables pan and pinch gestures. Defaults to true. */
   enableGestures?: boolean;
-  /** iOS: follows device orientation using CoreMotion. Defaults to false. */
+  /** iOS/Android: follows device orientation using fused motion sensors. Defaults to false. */
   enableMotion?: boolean;
   onTap?: (event: ViewEvent<OnTapEventPayload>) => void;
   onLoad?: (event: ViewEvent<{ width: number; height: number }>) => void;

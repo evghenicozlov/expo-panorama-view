@@ -1,8 +1,8 @@
 # expo-panorama-view
 
-Native 360° photo viewer for Expo and React Native. The panorama renderer is currently implemented on **iOS**; Android and web still contain the generated placeholder views.
+Native 360° photo viewer for Expo and React Native. The panorama renderer is implemented on **iOS and Android**. Web still contains the generated placeholder view.
 
-## Usage (iOS)
+## Usage (iOS and Android)
 
 Use an equirectangular panorama covering 360° × 180°, ideally with a 2:1 aspect ratio. Ordinary photos will appear stretched. With `yaw={0}` and `pitch={0}` (the defaults), the camera starts at the center of the photo. `resetMotion()` returns to this center unless custom base angles are configured.
 
@@ -30,9 +30,9 @@ export function PanoramaScreen() {
 
 Drag to look around; pinch to zoom. Dragging rotates around the current camera’s screen axes, including when the phone is tilted or in landscape. Gesture rotation is stored separately from the base `yaw` and `pitch` props, so dragging can look past the base pitch limits. `yaw` and `pitch` are degrees. Pitch is limited to −89…89; zoom is limited to 1…4. Gestures update the camera internally and emit `onCameraChange` with `{ yaw, pitch, zoom }` under `nativeEvent`. Changing a camera prop updates that camera value. `enableGestures` defaults to `true`. `onTap` is also available.
 
-The renderer uses SceneKit without third-party native dependencies. Video and Street View are not implemented.
+The iOS renderer uses SceneKit; Android uses OpenGL ES 2.0. Neither needs third-party renderer dependencies. Video and Street View are not implemented.
 
-## Motion controls (iOS)
+## Motion controls (iOS and Android)
 
 Set `enableMotion` to follow the phone using CoreMotion (gyroscope and accelerometer). It defaults to `false`. The first sensor sample anchors the current view, so enabling motion does not jump to an absolute heading. Portrait and landscape screen axes are supported. Drag and pinch remain available; `enableGestures={false}` disables them independently.
 
@@ -65,7 +65,7 @@ cd ..
 npx expo run:ios
 ```
 
-## Reset motion (iOS)
+## Reset motion (iOS and Android)
 
 Use a typed ref to reset the fused gyroscope/accelerometer reference:
 
@@ -93,3 +93,16 @@ export function Panorama() {
 ```
 
 `resetMotion(): Promise<void>` clears device and drag rotation, keeps the configured `yaw`, `pitch`, and current zoom, emits `onCameraChange`, and takes the next fresh motion sample as its reference. It also works with motion disabled. It recenters the viewer rather than physically calibrating the sensors. The promise resolves after the reset is applied; the next sensor sample arrives asynchronously. Rebuild the native app after adding this method.
+
+## Android
+
+Uses OpenGL ES 2.0 without third-party renderer dependencies. The center of the image is the default view. The API, screen-relative gestures, events, and `resetMotion()` match iOS. Motion uses the fused game rotation vector (gyroscope/accelerometer), with rotation vector as a fallback. If unavailable, `onError` reports it and gestures remain usable.
+
+HTTP(S) and `file://` sources are supported. Prefer HTTPS; Android may block cleartext HTTP according to the host app’s network configuration. Downloads are limited to 32 MB and images are decoded to at most 4096 pixels on their longest side, then reduced further if required by the GPU. `onLoad` reports original dimensions.
+
+```sh
+cd example
+npx expo run:android
+```
+
+Test motion on a physical device. The example’s Reset position button works on both native platforms.

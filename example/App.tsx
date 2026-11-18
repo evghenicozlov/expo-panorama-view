@@ -13,6 +13,7 @@ export default function App() {
         style={styles.view}
         source={{ uri: url }}
         enableMotion
+        useInitialTilt
         onTap={() => console.log('Tapped!')}
       />
       {Platform.OS !== 'web' && (
@@ -20,7 +21,7 @@ export default function App() {
           <Button
             title="Reset position"
             onPress={() => {
-              panoramaRef.current?.resetMotion().catch(console.warn);
+              panoramaRef.current?.reset().catch(console.warn);
             }}
           />
         </View>

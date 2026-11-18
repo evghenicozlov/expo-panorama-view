@@ -5,8 +5,8 @@ export type PanoramaCamera = { yaw: number; pitch: number; zoom: number };
 type ViewEvent<T> = { nativeEvent: T };
 
 export type ExpoPanoramaViewRef = {
-  /** iOS/Android: re-anchor device motion and clear drag rotation. Keeps yaw, pitch and zoom. */
-  resetMotion(): Promise<void>;
+  /** iOS/Android: re-anchor device motion and clear drag rotation. Keeps yaw and pitch and resets zoom to 1×. */
+  reset(): Promise<void>;
 };
 
 export type ExpoPanoramaViewProps = {
@@ -22,6 +22,8 @@ export type ExpoPanoramaViewProps = {
   enableGestures?: boolean;
   /** iOS/Android: follows device orientation using fused motion sensors. Defaults to false. */
   enableMotion?: boolean;
+  /** Use the physical device tilt when motion starts or reset() is called. Defaults to false. */
+  useInitialTilt?: boolean;
   onTap?: (event: ViewEvent<OnTapEventPayload>) => void;
   /** Fired before a non-empty source starts loading, including local files. */
   onLoadStart?: (event: ViewEvent<{ uri: string }>) => void;

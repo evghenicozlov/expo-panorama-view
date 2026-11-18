@@ -37,11 +37,26 @@ class ExpoPanoramaView(context: Context, appContext: AppContext) : ExpoView(cont
   private var listening = false
   private var gestures = true
   private var motion = false
+  var useInitialTilt = false
+  private var needsInitialTilt = true
+  private var lastScreen: PanoramaRotation? = null
   private var reference: PanoramaRotation? = null
   private var anchor = PanoramaRotation()
   private var motionRotation = PanoramaRotation()
   private var drag = PanoramaRotation()
   private var screenRotation = -1
+  private var panStartRotation = PanoramaRotation()
+  private var panStartMotion = PanoramaRotation()
+  private var panStartX = 0f
+  private var panStartY = 0f
+  private var reanchorPan = false
+  private fun beginPan(x: Float, y: Float) {
+    panStartRotation = drag
+    panStartMotion = motionRotation
+    panStartX = x
+    panStartY = y
+    reanchorPan = false
+  }
   private var yaw = 0f
   private var pitch = 0f
   private var zoom = 1f
@@ -52,14 +67,21 @@ class ExpoPanoramaView(context: Context, appContext: AppContext) : ExpoView(cont
     }
   })
   private val gestureDetector = GestureDetector(context, object : GestureDetector.SimpleOnGestureListener() {
-    override fun onDown(event: MotionEvent) = true
+    override fun onDown(event: MotionEvent): Boolean {
+      beginPan(event.x, event.y)
+      return true
+    }
     override fun onSingleTapUp(event: MotionEvent): Boolean {
       surface.performClick(); return true
     }
     override fun onScroll(first: MotionEvent?, current: MotionEvent, dx: Float, dy: Float): Boolean {
       if (!gestures || scaleDetector.isInProgress || current.pointerCount != 1) return false
       val radians = Math.toRadians((75f/zoom/height.coerceAtLeast(1)).toDouble()).toFloat()
-      drag = drag * PanoramaRotation.axis(-dx*radians,0f,1f,0f) * PanoramaRotation.axis(-dy*radians,1f,0f,0f)
+      if (reanchorPan) beginPan(current.x, current.y)
+      val horizontal = (current.x - panStartX) * radians
+      val vertical = (current.y - panStartY) * radians
+      val delta = PanoramaRotation.axis(horizontal, 0f, 1f, 0f) * PanoramaRotation.axis(vertical, 1f, 0f, 0f)
+      drag = panStartRotation.applyingPan(panStartMotion, delta)
       updateCamera(); emitCamera(); return true
     }
   })
@@ -74,6 +96,7 @@ class ExpoPanoramaView(context: Context, appContext: AppContext) : ExpoView(cont
     surface.setOnClickListener { performClick() }
     surface.setOnTouchListener { _, event ->
       if(event.actionMasked == MotionEvent.ACTION_DOWN) parent?.requestDisallowInterceptTouchEvent(gestures)
+      if (event.actionMasked == MotionEvent.ACTION_POINTER_DOWN) reanchorPan = true
       if(gestures) scaleDetector.onTouchEvent(event)
       gestureDetector.onTouchEvent(event)
       if(event.actionMasked == MotionEvent.ACTION_UP || event.actionMasked == MotionEvent.ACTION_CANCEL) parent?.requestDisallowInterceptTouchEvent(false)
@@ -156,10 +179,20 @@ class ExpoPanoramaView(context: Context, appContext: AppContext) : ExpoView(cont
   fun setPitch(value: Double) { if(value.isFinite()) { pitch=value.coerceIn(-89.0,89.0).toFloat(); updateCamera() } }
   fun setZoom(value: Double) { if(value.isFinite()) { zoom=value.coerceIn(1.0,4.0).toFloat(); updateCamera() } }
   fun setEnableGestures(value: Boolean) { gestures=value }
-  fun setEnableMotion(value: Boolean) { motion=value; updateSensors() }
-  fun resetMotion() {
-    stopSensors(); motionRotation=PanoramaRotation(); anchor=PanoramaRotation(); drag=PanoramaRotation()
-    screenRotation=-1; updateCamera(); emitCamera(); updateSensors()
+  fun setEnableMotion(value: Boolean) {
+    if (value == motion) return
+    if (value) needsInitialTilt = true
+    motion = value
+    updateSensors()
+  }
+  fun reset() {
+    stopSensors()
+    needsInitialTilt = true
+    motionRotation = if (motion && useInitialTilt) lastScreen?.initialTilt() ?: PanoramaRotation() else PanoramaRotation()
+    anchor = motionRotation
+    zoom = 1f
+    drag = PanoramaRotation()
+    reanchorPan=true; screenRotation=-1; updateCamera(); emitCamera(); updateSensors()
   }
   private fun stopSensors() { sensors.unregisterListener(this); listening=false; reference=null; lastSensorTimestamp=android.os.SystemClock.elapsedRealtimeNanos() }
   private fun updateSensors() {
@@ -175,17 +208,28 @@ class ExpoPanoramaView(context: Context, appContext: AppContext) : ExpoView(cont
     lastSensorTimestamp=event.timestamp
     val rotation=display?.rotation ?: Surface.ROTATION_0
     if(rotation!=screenRotation) { screenRotation=rotation; reference=null }
-    val angle=when(rotation) { Surface.ROTATION_90 -> Math.PI/2; Surface.ROTATION_180 -> Math.PI; Surface.ROTATION_270 -> -Math.PI/2; else -> 0.0 }.toFloat()
+    val angle=when(rotation) { Surface.ROTATION_90 -> -Math.PI/2; Surface.ROTATION_180 -> Math.PI; Surface.ROTATION_270 -> Math.PI/2; else -> 0.0 }.toFloat()
     val q=FloatArray(4); SensorManager.getQuaternionFromVector(q,event.values)
     val screen=PanoramaRotation(q[1],q[2],q[3],q[0]).normalized()*PanoramaRotation.axis(angle,0f,0f,1f)
     val start=reference
-    if(start==null) { reference=screen; anchor=motionRotation; return }
+    lastScreen = screen
+    if (start == null) {
+      reference = screen
+      if (needsInitialTilt) {
+        motionRotation = if (useInitialTilt) screen.initialTilt() else PanoramaRotation()
+        needsInitialTilt = false
+        updateCamera()
+        emitCamera()
+      }
+      anchor = motionRotation
+      return
+    }
     motionRotation=anchor*start.inverse()*screen
     updateCamera(); emitCamera()
   }
   private fun updateCamera() {
     renderer.rotation=PanoramaRotation.axis(Math.toRadians(yaw.toDouble()).toFloat(),0f,1f,0f)*
-      PanoramaRotation.axis(Math.toRadians(pitch.toDouble()).toFloat(),1f,0f,0f)*motionRotation*drag
+      PanoramaRotation.axis(Math.toRadians(pitch.toDouble()).toFloat(),1f,0f,0f)*drag*motionRotation
     renderer.zoom=zoom; surface.requestRender()
   }
   private fun emitCamera() {

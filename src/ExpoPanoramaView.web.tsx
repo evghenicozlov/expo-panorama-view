@@ -5,8 +5,8 @@ import { ExpoPanoramaViewProps, ExpoPanoramaViewRef } from './ExpoPanoramaView.t
 const ExpoPanoramaView = React.forwardRef<ExpoPanoramaViewRef, ExpoPanoramaViewProps>(
   function ExpoPanoramaView(props, ref) {
     React.useImperativeHandle(ref, () => ({
-      async resetMotion() {
-        throw new Error('resetMotion is only available on iOS.');
+      async reset() {
+        throw new Error('reset is only available on iOS and Android.');
       },
     }));
     return (

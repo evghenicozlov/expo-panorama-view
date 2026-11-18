@@ -13,9 +13,18 @@ class PanoramaRotationTest {
     for(roll in listOf(0f,Math.PI.toFloat()/2,-Math.PI.toFloat()/2,Math.PI.toFloat(),0.7f)) {
       val device=PanoramaRotation.axis(roll,0f,0f,1f)*PanoramaRotation.axis(0.4f,1f,0f,0f)
       val drag=PanoramaRotation.axis(0.3f,0f,1f,0f)
-      val before=device*drag
-      val after=device*(drag*delta)
+      val before=drag*device
+      val after=drag.applyingPan(device,delta)*device
       assertRotation(before.inverse()*after,delta)
+    }
+  }
+  @Test fun tiltAfterHalfTurnRemainsCameraLocal() {
+    val device = PanoramaRotation.axis(0.6f, 0f, 0f, 1f)
+    val halfTurn = PanoramaRotation.axis(Math.PI.toFloat(), 0f, 1f, 0f)
+    val drag = PanoramaRotation().applyingPan(device, halfTurn)
+    val afterSwipe = drag * device
+    for (tilt in listOf(PanoramaRotation.axis(0.2f, 1f, 0f, 0f), PanoramaRotation.axis(0.2f, 0f, 0f, 1f))) {
+      assertRotation(afterSwipe.inverse() * drag * (device * tilt), tilt)
     }
   }
   @Test fun referenceSampleIsNeutralAndResetReturnsToCenter() {
@@ -27,6 +36,16 @@ class PanoramaRotationTest {
     assertEquals(0.5,0.5+atan2(x.toDouble(),-z.toDouble())/(2*Math.PI),0.00001)
     assertEquals(0.5,0.5-asin(y.toDouble())/Math.PI,0.00001)
   }
+  @Test fun initialTiltIncludesGravityButDiscardsHeading() {
+    val upright = PanoramaRotation.axis((Math.PI/2).toFloat(), 1f, 0f, 0f)
+    val heading = PanoramaRotation.axis(1.2f, 0f, 0f, 1f)
+    for (pitch in listOf(-1.5707963f, -0.6f, 0f, 0.4f, 1.5707963f)) {
+      val roll = if (abs(pitch) > 1.5f) 0f else 0.55f
+      val tilt = PanoramaRotation.axis(pitch,1f,0f,0f) * PanoramaRotation.axis(roll,0f,0f,1f)
+      assertRotation((heading * upright * tilt).initialTilt(), tilt)
+    }
+  }
+
   @Test fun repeatedRotationsStayNormalized() {
     var rotation=PanoramaRotation()
     repeat(10000) { rotation=rotation*PanoramaRotation.axis(0.001f,0f,1f,0f)*PanoramaRotation.axis(-0.002f,1f,0f,0f) }

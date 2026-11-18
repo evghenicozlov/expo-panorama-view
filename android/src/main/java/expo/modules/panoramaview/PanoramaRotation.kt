@@ -11,6 +11,19 @@ internal data class PanoramaRotation(val x: Float = 0f, val y: Float = 0f, val z
     val n = sqrt(x*x+y*y+z*z+w*w)
     return if (n > 0f) PanoramaRotation(x/n,y/n,z/n,w/n) else PanoramaRotation()
   }
+  // Store the screen-space drag before motion so later sensor deltas stay camera-local.
+  fun applyingPan(motion: PanoramaRotation, delta: PanoramaRotation) =
+    this * motion * delta * motion.inverse()
+
+  fun initialTilt(): PanoramaRotation {
+    // Third row is sensor-world up expressed in screen coordinates.
+    val m = matrix()
+    val horizontal = hypot(m[2], m[5])
+    val pitch = atan2(-m[8], horizontal)
+    val roll = if (horizontal < 0.01f) 0f else atan2(m[2], m[5])
+    return axis(pitch, 1f, 0f, 0f) * axis(roll, 0f, 0f, 1f)
+  }
+
   fun inverse() = PanoramaRotation(-x,-y,-z,w)
   fun matrix() = floatArrayOf(
     1-2*(y*y+z*z), 2*(x*y+z*w), 2*(x*z-y*w),

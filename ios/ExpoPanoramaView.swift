@@ -22,11 +22,16 @@ class ExpoPanoramaView: ExpoView {
   private let motionQueue = OperationQueue()
   private var motionEnabled = false
   private var motionSession = UUID()
+  var useInitialTilt = false
+  private var needsInitialTilt = true
+  private var lastScreen: simd_quatf?
   private var motionReference: simd_quatf?
   private var motionOffset = simd_quatf(angle: 0, axis: SIMD3<Float>(0, 1, 0))
   private var motionAnchor = simd_quatf(angle: 0, axis: SIMD3<Float>(0, 1, 0))
   private var motionInterfaceOrientation: UIInterfaceOrientation?
   private var gestureRotation = simd_quatf(angle: 0, axis: SIMD3<Float>(0, 1, 0))
+  private var panStartRotation = simd_quatf(angle: 0, axis: SIMD3<Float>(0, 1, 0))
+  private var panStartMotion = simd_quatf(angle: 0, axis: SIMD3<Float>(0, 1, 0))
   private var yaw = 0.0
   private var pitch = 0.0
   private var zoom = 1.0
@@ -168,13 +173,19 @@ class ExpoPanoramaView: ExpoView {
   }
 
   /// Recenter fused gyroscope/accelerometer motion and clear accumulated drag.
-  /// Keep the configured yaw, pitch and zoom as the starting view.
-  func resetMotion() {
+  /// Keep the configured yaw and pitch and restore 1× zoom.
+  func reset() {
     stopMotion() // Invalidate queued samples before accepting a fresh reference.
     let identity = simd_quatf(angle: 0, axis: SIMD3<Float>(0, 1, 0))
-    motionOffset = identity
-    motionAnchor = identity
+    needsInitialTilt = true
+    motionOffset = motionEnabled && useInitialTilt ? lastScreen.map { PanoramaCameraRotation.initialTilt(screen: $0) } ?? identity : identity
+    motionAnchor = motionOffset
     gestureRotation = identity
+    zoom = 1.0
+    pinchStartZoom = zoom
+    pinchGesture.scale = 1.0
+    panStartRotation = identity
+    panStartMotion = identity
     motionInterfaceOrientation = nil
     panGesture.setTranslation(.zero, in: sceneView)
     updateCamera()
@@ -184,6 +195,7 @@ class ExpoPanoramaView: ExpoView {
 
   func setEnableMotion(_ enabled: Bool) {
     guard enabled != motionEnabled else { return }
+    if enabled { needsInitialTilt = true }
     motionEnabled = enabled
     updateMotionState()
   }
@@ -235,15 +247,22 @@ class ExpoPanoramaView: ExpoView {
     // Rotate the screen axes for landscape before computing the relative rotation.
     let angle: Float
     switch orientation {
-    case .landscapeLeft: angle = -.pi / 2
-    case .landscapeRight: angle = .pi / 2
+    case .landscapeLeft: angle = .pi / 2
+    case .landscapeRight: angle = -.pi / 2
     case .portraitUpsideDown: angle = .pi
     default: angle = 0
     }
     let q = motion.attitude.quaternion
     let device = simd_quatf(ix: Float(q.x), iy: Float(q.y), iz: Float(q.z), r: Float(q.w))
     let screen = simd_normalize(device * simd_quatf(angle: angle, axis: SIMD3<Float>(0, 0, 1)))
+    lastScreen = screen
     guard let reference = motionReference else {
+      if needsInitialTilt {
+        motionOffset = useInitialTilt ? PanoramaCameraRotation.initialTilt(screen: screen) : simd_quatf(angle: 0, axis: [0, 1, 0])
+        needsInitialTilt = false
+        updateCamera()
+        emitCameraChange()
+      }
       motionReference = screen
       motionAnchor = motionOffset
       return
@@ -256,7 +275,7 @@ class ExpoPanoramaView: ExpoView {
   private func updateCamera() {
     let horizontal = simd_quatf(angle: Float(yaw * .pi / 180), axis: SIMD3<Float>(0, 1, 0))
     let vertical = simd_quatf(angle: Float(pitch * .pi / 180), axis: SIMD3<Float>(1, 0, 0))
-    cameraNode.simdOrientation = simd_normalize(horizontal * vertical * motionOffset * gestureRotation)
+    cameraNode.simdOrientation = simd_normalize(horizontal * vertical * gestureRotation * motionOffset)
     cameraNode.camera?.fieldOfView = 75 / zoom
   }
 
@@ -267,17 +286,19 @@ class ExpoPanoramaView: ExpoView {
   }
 
   @objc private func handlePan(_ gesture: UIPanGestureRecognizer) {
+    if gesture.state == .began {
+      panStartRotation = gestureRotation
+      panStartMotion = motionOffset
+    }
     let translation = gesture.translation(in: sceneView)
     let degreesPerPoint = (75 / zoom) / Double(max(sceneView.bounds.height, 1))
-    // Apply drag after device motion, around the rendered camera's screen axes.
-    // Changing world yaw/pitch here makes swipes rotate with the phone's roll.
+    // Use total displacement from the start so a closed path cannot accumulate roll.
     gestureRotation = PanoramaCameraRotation.applyingPan(
-      to: gestureRotation,
+      to: panStartRotation, motion: panStartMotion,
       horizontal: Float(Double(translation.x) * degreesPerPoint * .pi / 180),
       vertical: Float(Double(translation.y) * degreesPerPoint * .pi / 180)
     )
     updateCamera()
-    gesture.setTranslation(.zero, in: sceneView)
     emitCameraChange()
   }
 

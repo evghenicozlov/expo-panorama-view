@@ -7,8 +7,8 @@ public class ExpoPanoramaViewModule: Module {
     View(ExpoPanoramaView.self) {
       Events("onTap", "onLoadStart", "onLoadEnd", "onLoadError", "onCameraChange")
 
-      AsyncFunction("resetMotion") { (view: ExpoPanoramaView) in
-        view.resetMotion()
+      AsyncFunction("reset") { (view: ExpoPanoramaView) in
+        view.reset()
       }
 
       Prop("source") { (view: ExpoPanoramaView, source: [String: String]?) in
@@ -22,6 +22,9 @@ public class ExpoPanoramaViewModule: Module {
       }
       Prop("zoom", 1.0) { (view: ExpoPanoramaView, value: Double) in
         view.setZoom(value)
+      }
+      Prop("useInitialTilt", false) { (view: ExpoPanoramaView, value: Bool) in
+        view.useInitialTilt = value
       }
       Prop("enableMotion", false) { (view: ExpoPanoramaView, value: Bool) in
         view.setEnableMotion(value)

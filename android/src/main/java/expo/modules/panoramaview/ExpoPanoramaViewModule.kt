@@ -11,8 +11,9 @@ class ExpoPanoramaViewModule : Module() {
       Prop("pitch") { view: ExpoPanoramaView, value: Double? -> view.setPitch(value ?: 0.0) }
       Prop("zoom") { view: ExpoPanoramaView, value: Double? -> view.setZoom(value ?: 1.0) }
       Prop("enableGestures") { view: ExpoPanoramaView, value: Boolean? -> view.setEnableGestures(value ?: true) }
+      Prop("useInitialTilt") { view: ExpoPanoramaView, value: Boolean? -> view.useInitialTilt = value ?: false }
       Prop("enableMotion") { view: ExpoPanoramaView, value: Boolean? -> view.setEnableMotion(value ?: false) }
-      AsyncFunction("resetMotion") { view: ExpoPanoramaView -> view.resetMotion() }
+      AsyncFunction("reset") { view: ExpoPanoramaView -> view.reset() }
     }
   }
 }

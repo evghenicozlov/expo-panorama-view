@@ -4,7 +4,7 @@ Native 360° photo viewer for Expo and React Native. The panorama renderer is im
 
 ## Usage (iOS and Android)
 
-Use an equirectangular panorama covering 360° × 180°, ideally with a 2:1 aspect ratio. Ordinary photos will appear stretched. With `yaw={0}` and `pitch={0}` (the defaults), the camera starts at the center of the photo. `resetMotion()` returns to this center unless custom base angles are configured.
+Use an equirectangular panorama covering 360° × 180°, ideally with a 2:1 aspect ratio. Ordinary photos will appear stretched. With `yaw={0}` and `pitch={0}` (the defaults), the camera starts at the center of the photo. `reset()` returns to this center unless custom base angles are configured.
 
 ```tsx
 import { ExpoPanoramaView } from 'expo-panorama-view';
@@ -33,6 +33,8 @@ Drag to look around; pinch to zoom. Dragging rotates around the current camera�
 The iOS renderer uses SceneKit; Android uses OpenGL ES 2.0. Neither needs third-party renderer dependencies. Video and Street View are not implemented.
 
 ## Motion controls (iOS and Android)
+
+With motion enabled, `useInitialTilt` defaults to `false`. Starting motion or calling `reset()` treats the current phone pose as neutral and tracks subsequent movement relative to it. Set `useInitialTilt={true}` to include the phone’s physical tilt. Changing this prop takes effect on the next motion start or reset.
 
 Set `enableMotion` to follow the phone using CoreMotion (gyroscope and accelerometer). It defaults to `false`. The first sensor sample anchors the current view, so enabling motion does not jump to an absolute heading. Portrait and landscape screen axes are supported. Drag and pinch remain available; `enableGestures={false}` disables them independently.
 
@@ -85,18 +87,18 @@ export function Panorama() {
         style={{ flex: 1 }}
       />
       <Button title="Reset" onPress={() => {
-        ref.current?.resetMotion().catch(console.warn);
+        ref.current?.reset().catch(console.warn);
       }} />
     </>
   );
 }
 ```
 
-`resetMotion(): Promise<void>` clears device and drag rotation, keeps the configured `yaw`, `pitch`, and current zoom, emits `onCameraChange`, and takes the next fresh motion sample as its reference. It also works with motion disabled. It recenters the viewer rather than physically calibrating the sensors. The promise resolves after the reset is applied; the next sensor sample arrives asynchronously. Rebuild the native app after adding this method.
+`reset(): Promise<void>` clears device and drag rotation, keeps the configured `yaw` and `pitch`, restores 1× zoom, emits `onCameraChange`, and takes the next fresh motion sample as its reference. It also works with motion disabled. It recenters the viewer rather than physically calibrating the sensors. The promise resolves after the reset is applied; the next sensor sample arrives asynchronously. Rebuild the native app after adding this method.
 
 ## Android
 
-Uses OpenGL ES 2.0 without third-party renderer dependencies. The center of the image is the default view. The API, screen-relative gestures, events, and `resetMotion()` match iOS. Motion uses the fused game rotation vector (gyroscope/accelerometer), with rotation vector as a fallback. If unavailable, `onLoadError` reports it and gestures remain usable.
+Uses OpenGL ES 2.0 without third-party renderer dependencies. The center of the image is the default view. The API, screen-relative gestures, events, and `reset()` match iOS. Motion uses the fused game rotation vector (gyroscope/accelerometer), with rotation vector as a fallback. If unavailable, `onLoadError` reports it and gestures remain usable.
 
 HTTP(S) and `file://` sources are supported. Prefer HTTPS; Android may block cleartext HTTP according to the host app’s network configuration. Downloads are limited to 32 MB and images are decoded to at most 4096 pixels on their longest side, then reduced further if required by the GPU. `onLoadEnd` reports original dimensions.
 
